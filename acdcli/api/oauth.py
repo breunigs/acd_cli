@@ -134,6 +134,16 @@ class OAuthHandler(AuthBase):
         """Checks for OAuth file existence and one-time initialize if necessary. Throws on error."""
         raise NotImplementedError
 
+    def _ensure_session_is_interactive(self):
+        """Ensures the current session interactive (allows the user to be prompted for input)
+        :raises: OSerror if either stdin or stdout are not a tty"""
+
+        from sys import stdout, stdin
+
+        if not stdout.isatty() or not stdin.isatty():
+            from errno import ENOTTY
+            raise OSError(ENOTTY, 'In order to setup acdcli, please run it interactively.')
+
     def get_access_token_info(self) -> dict:
         """
         :returns:
@@ -163,6 +173,8 @@ class AppspotOAuthHandler(OAuthHandler):
 
         if os.path.isfile(self.oauth_data_path):
             return
+
+        self._ensure_session_is_interactive()
 
         input('For the one-time authentication a browser (tab) will be opened at %s.\n'
               % AppspotOAuthHandler.APPSPOT_URL + 'Please accept the request and ' +
@@ -260,6 +272,8 @@ class LocalOAuthHandler(OAuthHandler):
     def check_oauth_file_exists(self):
         """:raises: Exception"""
         if not os.path.isfile(self.oauth_data_path):
+            self._ensure_session_is_interactive()
+
             from urllib.parse import urlencode
 
             url = self.AMAZON_OA_LOGIN_URL + '?' + urlencode(self.OAUTH_ST1())
